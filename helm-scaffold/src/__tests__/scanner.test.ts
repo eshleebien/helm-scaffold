@@ -49,4 +49,60 @@ describe('scan', () => {
       expect.arrayContaining(['POSTGRES_HOST', 'POSTGRES_DB', 'APP_PORT'])
     );
   });
+
+  it('detects s3 from @aws-sdk/client-s3 import in source files', async () => {
+    const result = await scan(path.join(fixtures, 'aws-sdk-node'));
+    expect(result.awsServices).toContain('s3');
+  });
+
+  it('detects dynamodb and sqs from boto3 client/resource calls in Python source', async () => {
+    const result = await scan(path.join(fixtures, 'aws-sdk-python'));
+    expect(result.awsServices).toContain('dynamodb');
+    expect(result.awsServices).toContain('sqs');
+  });
+
+  it('detects s3 and ssm from aws-sdk-go imports in Go source', async () => {
+    const result = await scan(path.join(fixtures, 'aws-sdk-go'));
+    expect(result.awsServices).toContain('s3');
+    expect(result.awsServices).toContain('ssm');
+  });
+
+  it('maps env var name patterns to AWS services', async () => {
+    const result = await scan(path.join(fixtures, 'aws-env-vars'));
+    expect(result.awsServices).toContain('s3');
+    expect(result.awsServices).toContain('sqs');
+    expect(result.awsServices).toContain('sns');
+    expect(result.awsServices).toContain('dynamodb');
+    expect(result.awsServices).toContain('ssm');
+    expect(result.awsServices).toContain('secretsmanager');
+  });
+
+  it('extracts resource name hints from env var values', async () => {
+    const result = await scan(path.join(fixtures, 'aws-env-vars'));
+    expect(result.resourceHints['s3']).toBe('my-app-uploads');
+    expect(result.resourceHints['sqs']).toBe('my-app-notifications');
+    expect(result.resourceHints['dynamodb']).toBe('users');
+  });
+
+  it('detects AWS services from .env.example file', async () => {
+    const result = await scan(path.join(fixtures, 'aws-config-files'));
+    expect(result.awsServices).toContain('s3');
+    expect(result.awsServices).toContain('sqs');
+    expect(result.awsServices).toContain('dynamodb');
+    expect(result.resourceHints['s3']).toBe('my-app-assets');
+  });
+
+  it('detects AWS services from serverless.yml provider.environment', async () => {
+    const result = await scan(path.join(fixtures, 'aws-config-files'));
+    expect(result.awsServices).toContain('sns');
+    expect(result.awsServices).toContain('ssm');
+    expect(result.awsServices).toContain('secretsmanager');
+  });
+
+  it('deduplicates awsServices when multiple sources detect the same service', async () => {
+    // aws-config-files has both .env.example (S3_BUCKET) and serverless.yml — if both signal s3, it appears once
+    const result = await scan(path.join(fixtures, 'aws-config-files'));
+    const s3Count = result.awsServices.filter(s => s === 's3').length;
+    expect(s3Count).toBe(1);
+  });
 });

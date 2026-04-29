@@ -1,0 +1,10 @@
+service: my-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    SNS_TOPIC: my-api-events
+    SSM_PARAMETER: /my-api/config
+    SECRET_ARN: arn:aws:secretsmanager:us-east-1:123:secret:my-api-db

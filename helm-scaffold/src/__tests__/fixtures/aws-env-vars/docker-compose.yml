@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  app:
+    image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest
+    ports:
+      - "80:8080"
+    environment:
+      UPLOAD_BUCKET: my-app-uploads
+      NOTIFICATION_QUEUE: my-app-notifications
+      ALERT_TOPIC: my-app-alerts
+      USERS_TABLE: users
+      APP_PARAMETER_STORE: /myapp/config
+      DB_SECRET: /myapp/db-password
