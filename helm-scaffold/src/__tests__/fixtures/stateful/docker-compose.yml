@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+  app:
+    image: 123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/stateful-app:v2.1.0
+    ports:
+      - "5432"
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=myapp
+      - APP_PORT=5432
+    volumes:
+      - app-data:/var/lib/data
+  db:
+    image: postgres:15
+    volumes:
+      - db-data:/var/lib/postgresql/data
+volumes:
+  app-data:
+  db-data:
