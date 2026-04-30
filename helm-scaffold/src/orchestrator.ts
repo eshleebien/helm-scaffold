@@ -47,6 +47,17 @@ export function buildRollbackCommand(appName: string, env: string, revision: num
   return `helm rollback ${release} ${revision} -n ${namespace}`;
 }
 
+export function buildTroubleshootCommands(appName: string, env: string): string[] {
+  const { release, namespace } = releaseNames(appName, env);
+  const selector = `app.kubernetes.io/instance=${release}`;
+  return [
+    `helm status ${release} -n ${namespace}`,
+    `helm history ${release} -n ${namespace}`,
+    `kubectl describe pod -l ${selector} -n ${namespace}`,
+    `kubectl logs -l ${selector} -n ${namespace} --tail=100`,
+  ];
+}
+
 export interface OrchestrationConfig {
   repoPath: string;
   appName: string;

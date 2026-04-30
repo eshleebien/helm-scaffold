@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { releaseNames, buildDeployCommand, buildUpgradeCommand, buildRollbackCommand, runOrchestration, OrchestrationConfig } from '../orchestrator';
+import { releaseNames, buildDeployCommand, buildUpgradeCommand, buildRollbackCommand, buildTroubleshootCommands, runOrchestration, OrchestrationConfig } from '../orchestrator';
 
 const FIXTURES = path.join(__dirname, 'fixtures');
 
@@ -91,5 +91,29 @@ describe('buildRollbackCommand', () => {
     expect(cmd).toContain('my-app-prod');
     expect(cmd).toContain('3');
     expect(cmd).toContain('-n my-app-prod');
+  });
+});
+
+describe('buildTroubleshootCommands', () => {
+  it('returns an array of exactly 4 commands', () => {
+    const cmds = buildTroubleshootCommands('my-app', 'prod');
+    expect(cmds).toHaveLength(4);
+  });
+
+  it('commands include helm status, helm history, kubectl describe pod, kubectl logs in order', () => {
+    const cmds = buildTroubleshootCommands('my-app', 'prod');
+    expect(cmds[0]).toContain('helm status');
+    expect(cmds[1]).toContain('helm history');
+    expect(cmds[2]).toContain('kubectl describe pod');
+    expect(cmds[3]).toContain('kubectl logs');
+  });
+
+  it('all commands use <app>-<env> naming and correct label selector', () => {
+    const cmds = buildTroubleshootCommands('my-app', 'prod');
+    for (const cmd of cmds) {
+      expect(cmd).toContain('my-app-prod');
+    }
+    expect(cmds[2]).toContain('app.kubernetes.io/instance=my-app-prod');
+    expect(cmds[3]).toContain('app.kubernetes.io/instance=my-app-prod');
   });
 });
