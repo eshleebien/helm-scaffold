@@ -9,6 +9,9 @@ export interface ChartConfig {
   containerPort: number;
   minReplicas?: number;
   maxReplicas?: number;
+  workloadType?: 'deployment' | 'statefulset';
+  storageSize?: string;
+  storageClass?: string;
 }
 
 export function generateChart(outputDir: string, signals: SignalMap, config: ChartConfig): void {
@@ -18,15 +21,22 @@ export function generateChart(outputDir: string, signals: SignalMap, config: Cha
   const imageTag = parseImageTag(config.imageUri);
   const minReplicas = config.minReplicas ?? 1;
   const maxReplicas = config.maxReplicas ?? 3;
+  const isStatefulSet = config.workloadType === 'statefulset';
 
   writeFile(outputDir, 'Chart.yaml', chartYaml(config));
   writeFile(outputDir, 'values.yaml', valuesYaml(imageRepo, imageTag, config, minReplicas, maxReplicas));
   writeFile(outputDir, 'templates/_helpers.tpl', helpersTpl(config));
-  writeFile(outputDir, 'templates/deployment.yaml', deploymentYaml(signals, config));
+
+  if (isStatefulSet) {
+    writeFile(outputDir, 'templates/statefulset.yaml', statefulSetYaml(signals, config));
+  } else {
+    writeFile(outputDir, 'templates/deployment.yaml', deploymentYaml(signals, config));
+    writeFile(outputDir, 'templates/hpa.yaml', hpaYaml());
+  }
+
   writeFile(outputDir, 'templates/service.yaml', serviceYaml(config));
   writeFile(outputDir, 'templates/ingress.yaml', ingressYaml());
   writeFile(outputDir, 'templates/serviceaccount.yaml', serviceAccountYaml());
-  writeFile(outputDir, 'templates/hpa.yaml', hpaYaml());
   writeFile(outputDir, 'templates/externalsecret.yaml', externalSecretYaml());
 }
 
@@ -168,6 +178,59 @@ spec:
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
 ${envBlock ? `          env:\n${envBlock}\n` : ''}`;
+}
+
+function statefulSetYaml(signals: SignalMap, config: ChartConfig): string {
+  const envBlock = signals.envVarNames.length > 0
+    ? signals.envVarNames.map(n => `        - name: ${n}\n          value: ""`).join('\n')
+    : '';
+
+  const storageSize = config.storageSize ?? '10Gi';
+  const storageClass = config.storageClass ?? 'gp2';
+
+  return `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "app.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "app.fullname" . }}
+  template:
+    metadata:
+      labels:
+        {{- include "app.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "app.serviceAccountName" . }}
+      containers:
+        - name: {{ include "app.fullname" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: ${config.containerPort}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+${envBlock ? `          env:\n${envBlock}\n` : ''}  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: "${storageClass}"
+        resources:
+          requests:
+            storage: "${storageSize}"
+`;
 }
 
 function serviceYaml(config: ChartConfig): string {

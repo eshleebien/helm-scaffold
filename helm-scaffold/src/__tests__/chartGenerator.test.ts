@@ -151,4 +151,70 @@ describe('generateChart', () => {
     expect(raw).toContain('3000');
     expect(raw).toContain('.Values.service.port');
   });
+
+  describe('StatefulSet variant', () => {
+    const statefulSignals: SignalMap = { ...baseSignals, statefulSetCandidate: true };
+    const statefulConfig: ChartConfig = { ...baseConfig, workloadType: 'statefulset' };
+
+    it('writes statefulset.yaml instead of deployment.yaml when workloadType is statefulset', () => {
+      generateChart(tmpDir, statefulSignals, statefulConfig);
+
+      expect(fs.existsSync(path.join(tmpDir, 'templates', 'statefulset.yaml'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'templates', 'deployment.yaml'))).toBe(false);
+    });
+
+    it('statefulset.yaml includes volumeClaimTemplates', () => {
+      generateChart(tmpDir, statefulSignals, statefulConfig);
+
+      const raw = fs.readFileSync(path.join(tmpDir, 'templates', 'statefulset.yaml'), 'utf8');
+      expect(raw).toContain('volumeClaimTemplates');
+      expect(raw).toContain('storageClassName');
+      expect(raw).toContain('storage:');
+    });
+
+    it('does not write hpa.yaml when workloadType is statefulset', () => {
+      generateChart(tmpDir, statefulSignals, statefulConfig);
+
+      expect(fs.existsSync(path.join(tmpDir, 'templates', 'hpa.yaml'))).toBe(false);
+    });
+
+    it('helm lint passes on a generated StatefulSet chart', () => {
+      generateChart(tmpDir, statefulSignals, statefulConfig);
+
+      let output = '';
+      let exitCode = 0;
+      try {
+        output = execSync(`helm lint ${tmpDir}`, { encoding: 'utf8' });
+      } catch (err: unknown) {
+        const execErr = err as { stdout?: string; stderr?: string; status?: number };
+        output = (execErr.stdout ?? '') + (execErr.stderr ?? '');
+        exitCode = execErr.status ?? 1;
+      }
+
+      expect(exitCode).toBe(0);
+      expect(output).toContain('1 chart(s) linted');
+      expect(output).not.toContain('[ERROR]');
+    });
+
+    it('uses storageSize and storageClass from config with sensible defaults', () => {
+      const configWithStorage: ChartConfig = {
+        ...statefulConfig,
+        storageSize: '20Gi',
+        storageClass: 'gp3',
+      };
+      generateChart(tmpDir, statefulSignals, configWithStorage);
+
+      const raw = fs.readFileSync(path.join(tmpDir, 'templates', 'statefulset.yaml'), 'utf8');
+      expect(raw).toContain('20Gi');
+      expect(raw).toContain('gp3');
+    });
+
+    it('deployment variant is unchanged when workloadType is absent', () => {
+      generateChart(tmpDir, baseSignals, baseConfig);
+
+      expect(fs.existsSync(path.join(tmpDir, 'templates', 'deployment.yaml'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'templates', 'hpa.yaml'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, 'templates', 'statefulset.yaml'))).toBe(false);
+    });
+  });
 });
