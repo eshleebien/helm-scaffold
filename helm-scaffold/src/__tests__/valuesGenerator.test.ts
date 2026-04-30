@@ -118,4 +118,26 @@ describe('generateValues', () => {
 
     expect(hpa.cpuTargetPercent).toBe(70);
   });
+
+  it('values.yaml includes certificateArn under ingress when provided', () => {
+    const config: ValuesConfig = {
+      ...baseConfig,
+      certificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/abc-123',
+    };
+    generateValues(tmpDir, baseSignals, config, []);
+
+    const values = loadYaml(path.join(tmpDir, 'values.yaml'));
+    const ingress = values['ingress'] as Record<string, string>;
+
+    expect(ingress.certificateArn).toBe('arn:aws:acm:us-east-1:123456789012:certificate/abc-123');
+  });
+
+  it('values.yaml ingress.certificateArn is empty string when certificateArn is omitted', () => {
+    generateValues(tmpDir, baseSignals, baseConfig, []);
+
+    const values = loadYaml(path.join(tmpDir, 'values.yaml'));
+    const ingress = values['ingress'] as Record<string, string>;
+
+    expect(ingress.certificateArn).toBe('');
+  });
 });

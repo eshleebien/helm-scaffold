@@ -7,6 +7,7 @@ export interface ValuesConfig {
   appName: string;
   imageUri: string;
   containerPort: number;
+  certificateArn?: string;
 }
 
 interface HpaDefaults { minReplicas: number; maxReplicas: number }
@@ -73,7 +74,7 @@ function baseValues(signals: SignalMap, config: ValuesConfig): object {
     ingress: {
       enabled: true,
       host: `${config.appName}.example.com`,
-      certificateArn: '',
+      certificateArn: config.certificateArn ?? '',
     },
     serviceAccount: { name: '' },
     hpa: { minReplicas: 1, maxReplicas: 3, cpuTargetPercent: 70 },
