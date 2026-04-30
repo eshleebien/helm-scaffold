@@ -29,6 +29,24 @@ export function buildDeployCommand(appName: string, env: string, chartPath: stri
   ].join(' ');
 }
 
+export function buildUpgradeCommand(appName: string, env: string, chartPath: string, kubecontext: string): string {
+  const { release, namespace } = releaseNames(appName, env);
+  return [
+    'helm upgrade',
+    release,
+    chartPath,
+    `-n ${namespace}`,
+    `-f values.yaml`,
+    `-f values.${env}.yaml`,
+    `--kube-context ${kubecontext}`,
+  ].join(' ');
+}
+
+export function buildRollbackCommand(appName: string, env: string, revision: number): string {
+  const { release, namespace } = releaseNames(appName, env);
+  return `helm rollback ${release} ${revision} -n ${namespace}`;
+}
+
 export interface OrchestrationConfig {
   repoPath: string;
   appName: string;

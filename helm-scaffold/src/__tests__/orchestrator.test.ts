@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { releaseNames, buildDeployCommand, runOrchestration, OrchestrationConfig } from '../orchestrator';
+import { releaseNames, buildDeployCommand, buildUpgradeCommand, buildRollbackCommand, runOrchestration, OrchestrationConfig } from '../orchestrator';
 
 const FIXTURES = path.join(__dirname, 'fixtures');
 
@@ -66,5 +66,30 @@ describe('buildDeployCommand', () => {
     expect(cmd).toContain('--create-namespace');
     expect(cmd).toContain('-f /charts/my-app/values.yaml');
     expect(cmd).toContain('-f /charts/my-app/values.prod.yaml');
+  });
+});
+
+describe('buildUpgradeCommand', () => {
+  it('produces helm upgrade (no --install) with correct release, namespace, values flags, and kubecontext', () => {
+    const cmd = buildUpgradeCommand('my-app', 'prod', '/charts/my-app', 'arn:aws:eks:us-east-1:123:cluster/my-cluster');
+
+    expect(cmd).toContain('helm upgrade');
+    expect(cmd).not.toContain('--install');
+    expect(cmd).toContain('my-app-prod');
+    expect(cmd).toContain('-n my-app-prod');
+    expect(cmd).toContain('-f values.yaml');
+    expect(cmd).toContain('-f values.prod.yaml');
+    expect(cmd).toContain('--kube-context arn:aws:eks:us-east-1:123:cluster/my-cluster');
+  });
+});
+
+describe('buildRollbackCommand', () => {
+  it('produces helm rollback with correct release, revision, and namespace', () => {
+    const cmd = buildRollbackCommand('my-app', 'prod', 3);
+
+    expect(cmd).toContain('helm rollback');
+    expect(cmd).toContain('my-app-prod');
+    expect(cmd).toContain('3');
+    expect(cmd).toContain('-n my-app-prod');
   });
 });
