@@ -105,4 +105,21 @@ describe('scan', () => {
     const s3Count = result.awsServices.filter(s => s === 's3').length;
     expect(s3Count).toBe(1);
   });
+
+  it('sets statefulSetCandidate true when docker-compose defines named volumes', async () => {
+    const result = await scan(path.join(fixtures, 'stateful'));
+    expect(result.statefulSetCandidate).toBe(true);
+  });
+
+  it('sets statefulSetCandidate true when env vars match database-adjacent patterns', async () => {
+    const result = await scan(path.join(fixtures, 'db-env-vars'));
+    expect(result.statefulSetCandidate).toBe(true);
+    expect(result.namedVolumes).toHaveLength(0);
+  });
+
+  it('sets statefulSetCandidate true when a PersistentVolumeClaim manifest exists in the repo', async () => {
+    const result = await scan(path.join(fixtures, 'pvc-manifest'));
+    expect(result.statefulSetCandidate).toBe(true);
+    expect(result.namedVolumes).toHaveLength(0);
+  });
 });

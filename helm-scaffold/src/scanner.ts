@@ -58,7 +58,55 @@ export async function scan(repoPath: string): Promise<SignalMap> {
   await scanSdkImports(repoPath, signals);
   await scanConfigFiles(repoPath, signals, envEntries);
   applyEnvVarPatterns(signals, envEntries);
+  resolveStatefulSetCandidate(repoPath, signals, envEntries);
   return signals;
+}
+
+const DB_ENV_PATTERNS: RegExp[] = [
+  /^POSTGRES_/i,
+  /^DATABASE_URL$/i,
+  /^MYSQL_/i,
+  /^REDIS_URL$/i,
+];
+
+function hasPvcManifest(dir: string): boolean {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const entry of entries) {
+    if (entry.isDirectory() && !SKIP_DIRS.has(entry.name)) {
+      if (hasPvcManifest(path.join(dir, entry.name))) return true;
+    } else if (entry.isFile() && (entry.name.endsWith('.yml') || entry.name.endsWith('.yaml'))) {
+      try {
+        const content = fs.readFileSync(path.join(dir, entry.name), 'utf8');
+        if (/kind:\s*PersistentVolumeClaim/m.test(content)) return true;
+      } catch {
+        // skip unreadable files
+      }
+    }
+  }
+  return false;
+}
+
+function resolveStatefulSetCandidate(repoPath: string, signals: SignalMap, envEntries: EnvEntry[]): void {
+  if (signals.namedVolumes.length > 0) {
+    signals.statefulSetCandidate = true;
+    return;
+  }
+
+  for (const { name } of envEntries) {
+    if (DB_ENV_PATTERNS.some(p => p.test(name))) {
+      signals.statefulSetCandidate = true;
+      return;
+    }
+  }
+
+  if (hasPvcManifest(repoPath)) {
+    signals.statefulSetCandidate = true;
+  }
 }
 
 function isResourceName(value: string): boolean {
