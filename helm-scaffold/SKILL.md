@@ -22,11 +22,9 @@ triggers:
 
 Guided, end-to-end Helm chart scaffolding and lifecycle management for EKS.
 
-All generators live in this directory (`~/.claude/skills/helm-scaffold/`).
-Run them with:
+All generators live in `__SKILL_DIR__`. Run them with:
 ```bash
-SKILL=~/.claude/skills/helm-scaffold
-cd "$SKILL" && npx ts-node src/cli.ts <command> [args]
+node __SKILL_DIR__/dist/cli.bundle.js <command> [args]
 ```
 
 ---
@@ -54,8 +52,7 @@ Confirm: _"Ready to scan `<repoPath>` and scaffold `<appName>` for `<environment
 ### Phase 1 — Scan
 
 ```bash
-cd ~/.claude/skills/helm-scaffold
-npx ts-node src/cli.ts scan <repoPath>
+node __SKILL_DIR__/dist/cli.bundle.js scan <repoPath>
 ```
 
 Output is JSON. Parse and display a summary table:
@@ -70,8 +67,7 @@ Confirm: _"Scan complete. Proceed to generate IAM policy?"_
 ### Phase 2 — IAM Generator
 
 ```bash
-cd ~/.claude/skills/helm-scaffold
-npx ts-node src/cli.ts generate-iam <repoPath> \
+node __SKILL_DIR__/dist/cli.bundle.js generate-iam <repoPath> \
   --app <appName> \
   --env <firstEnv> \
   --cluster <clusterName> \
@@ -91,8 +87,7 @@ Tell the user: _"Run these four AWS CLI commands in order. They create the IAM p
 
 ```bash
 OUTPUT_DIR=<repoPath>/helm/<appName>
-cd ~/.claude/skills/helm-scaffold
-npx ts-node src/cli.ts generate-chart <repoPath> "$OUTPUT_DIR" \
+node __SKILL_DIR__/dist/cli.bundle.js generate-chart <repoPath> "$OUTPUT_DIR" \
   --app <appName> \
   --env <firstEnv> \
   [--workload-type statefulset]   # if user confirmed StatefulSet in Phase 1
@@ -104,8 +99,7 @@ Print the output directory and list of files written. Confirm: _"Chart generated
 ### Phase 4 — Values Generator
 
 ```bash
-cd ~/.claude/skills/helm-scaffold
-npx ts-node src/cli.ts generate-values "$OUTPUT_DIR" \
+node __SKILL_DIR__/dist/cli.bundle.js generate-values "$OUTPUT_DIR" \
   --repo <repoPath> \
   --app <appName> \
   --image <imageUri> \
@@ -121,8 +115,7 @@ Print the generated filenames. Confirm: _"Values files generated. Proceed to val
 For each environment:
 
 ```bash
-cd ~/.claude/skills/helm-scaffold
-npx ts-node src/cli.ts validate \
+node __SKILL_DIR__/dist/cli.bundle.js validate \
   <appName>-<env> "$OUTPUT_DIR" <appName>-<env> <env>
 ```
 
@@ -151,8 +144,7 @@ On success print: _"✓ `<appName>-<env>` deployed successfully."_
 1. Ask for app name, environment, kubecontext, and chart path
 2. Re-run validation:
    ```bash
-   cd ~/.claude/skills/helm-scaffold
-   npx ts-node src/cli.ts validate <appName>-<env> <chartPath> <appName>-<env> <env>
+   node __SKILL_DIR__/dist/cli.bundle.js validate <appName>-<env> <chartPath> <appName>-<env> <env>
    ```
 3. If validation passes, show diff if `helm diff` plugin available (`helm plugin list | grep diff`)
 4. Run upgrade:
