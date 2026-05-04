@@ -1,0 +1,20 @@
+{
+  "name": "helm-scaffold-skill",
+  "version": "0.1.0",
+  "description": "Install the helm-scaffold Claude Code skill — AI-guided Helm chart scaffolding and lifecycle management for EKS.",
+  "bin": {
+    "helm-scaffold-skill": "helm-scaffold/bin/install.js"
+  },
+  "scripts": {
+    "prepare": "npm install --prefix helm-scaffold && npm run --prefix helm-scaffold build"
+  },
+  "files": [
+    "helm-scaffold/bin/",
+    "helm-scaffold/dist/",
+    "helm-scaffold/scripts/",
+    "helm-scaffold/SKILL.md",
+    "helm-scaffold/REFERENCE.md"
+  ],
+  "keywords": ["claude-code", "skill", "helm", "kubernetes", "eks"],
+  "license": "MIT"
+}

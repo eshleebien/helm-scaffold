@@ -6,14 +6,19 @@ A [Claude Code](https://claude.ai/code) skill for AI-guided Helm chart scaffoldi
 
 ## Install
 
-**Global** (available in all your projects):
+**From GitHub** (no npm publish required):
+```bash
+npx github:eshleebien/helm-scaffold
+```
+
+**From npm** (once published):
 ```bash
 npx helm-scaffold-skill
 ```
 
-**Project-local** (scoped to the current repo):
+Add `--local` to either command to install into `.claude/skills/` in the current project instead of `~/.claude/skills/`:
 ```bash
-npx helm-scaffold-skill --local
+npx github:eshleebien/helm-scaffold --local
 ```
 
 ## What it does
