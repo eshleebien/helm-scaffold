@@ -167,15 +167,11 @@ On success print: _"✓ `<appName>-<env>` deployed successfully."_
 
 ## Day 2: Troubleshoot
 
-Run all four in sequence:
-
 ```bash
-helm status   <appName>-<env> -n <appName>-<env>
-helm history  <appName>-<env> -n <appName>-<env>
-kubectl describe pod -l app.kubernetes.io/instance=<appName>-<env> -n <appName>-<env>
-kubectl logs  -l app.kubernetes.io/instance=<appName>-<env> -n <appName>-<env> --tail=100
-# add --previous to logs if CrashLoopBackOff appears in describe output
+node __SKILL_DIR__/dist/cli.bundle.js troubleshoot <appName>-<env> <appName>-<env>
 ```
+
+The command runs `helm status`, `helm history`, `kubectl describe pod`, and `kubectl logs` in sequence. It automatically adds `--previous` to the logs command if `CrashLoopBackOff` is detected in the describe output.
 
 ---
 
