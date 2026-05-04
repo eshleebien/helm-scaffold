@@ -17,6 +17,7 @@ import { scan } from './scanner';
 import { generateChart, ChartConfig } from './chartGenerator';
 import { generateValues, ValuesConfig } from './valuesGenerator';
 import { generateIam, IamConfig } from './iamGenerator';
+import { hasCrashLoopBackOff, buildLogsArgs } from './orchestrator';
 
 const [,, command, ...rest] = process.argv;
 
@@ -84,6 +85,9 @@ async function main(): Promise<void> {
       const port     = parseInt(flags['port'] ?? '3000', 10);
       const envs     = (flags['envs'] ?? 'prod').split(',').map(e => e.trim());
       const certArn  = flags['cert-arn'];
+      if (certArn !== undefined && !certArn.startsWith('arn:aws:acm:')) {
+        die(`--cert-arn must start with 'arn:aws:acm:' (got: ${certArn})`);
+      }
 
       // scan for awsServices / resourceHints (best-effort; values gen doesn't need signals deeply)
       const repoPath = flags['repo'] ?? '.';
@@ -121,9 +125,28 @@ async function main(): Promise<void> {
       break;
     }
 
+    case 'troubleshoot': {
+      const [release, namespace] = positional;
+      if (!release || !namespace) die('Usage: troubleshoot <release> <namespace>');
+
+      const selector = `app.kubernetes.io/instance=${release}`;
+
+      execFileSync('helm', ['status', release, '-n', namespace], { stdio: 'inherit' });
+      execFileSync('helm', ['history', release, '-n', namespace], { stdio: 'inherit' });
+
+      let describeOutput = '';
+      try {
+        describeOutput = execFileSync('kubectl', ['describe', 'pod', '-l', selector, '-n', namespace]).toString();
+      } catch { /* kubectl unavailable or no pods — continue */ }
+      process.stdout.write(describeOutput);
+
+      execFileSync('kubectl', buildLogsArgs(release, namespace, hasCrashLoopBackOff(describeOutput)), { stdio: 'inherit' });
+      break;
+    }
+
     default:
       console.error(`unknown command: ${command ?? '(none)'}`);
-      console.error('commands: scan | generate-chart | generate-values | generate-iam | validate');
+      console.error('commands: scan | generate-chart | generate-values | generate-iam | validate | troubleshoot');
       process.exit(1);
   }
 }

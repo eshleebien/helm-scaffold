@@ -97,3 +97,14 @@ export function runValidation(chartPath: string, release: string, namespace: str
   const script = path.resolve(__dirname, '../../scripts/validate.sh');
   execFileSync('bash', [script, release, chartPath, namespace, env], { stdio: 'inherit' });
 }
+
+export function hasCrashLoopBackOff(describeOutput: string): boolean {
+  return describeOutput.includes('CrashLoopBackOff');
+}
+
+export function buildLogsArgs(release: string, namespace: string, withPrevious: boolean): string[] {
+  const selector = `app.kubernetes.io/instance=${release}`;
+  const args = ['logs', '-l', selector, '-n', namespace, '--tail=100'];
+  if (withPrevious) args.push('--previous');
+  return args;
+}
