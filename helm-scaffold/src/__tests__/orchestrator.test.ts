@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { releaseNames, buildDeployCommand, buildUpgradeCommand, buildRollbackCommand, buildTroubleshootCommands, runOrchestration, OrchestrationConfig } from '../orchestrator';
+import { releaseNames, buildDeployCommand, buildUpgradeCommand, buildRollbackCommand, buildTroubleshootCommands, runOrchestration, OrchestrationConfig, hasCrashLoopBackOff, buildLogsArgs } from '../orchestrator';
 
 const FIXTURES = path.join(__dirname, 'fixtures');
 
@@ -115,5 +115,42 @@ describe('buildTroubleshootCommands', () => {
     }
     expect(cmds[2]).toContain('app.kubernetes.io/instance=my-app-prod');
     expect(cmds[3]).toContain('app.kubernetes.io/instance=my-app-prod');
+  });
+});
+
+describe('hasCrashLoopBackOff', () => {
+  it('returns true when describe output contains CrashLoopBackOff', () => {
+    const output = 'State: Waiting\n  Reason: CrashLoopBackOff\nRestart Count: 5';
+    expect(hasCrashLoopBackOff(output)).toBe(true);
+  });
+
+  it('returns false when describe output does not contain CrashLoopBackOff', () => {
+    const output = 'State: Running\n  Started: Mon, 01 Jan 2024\nReady: True';
+    expect(hasCrashLoopBackOff(output)).toBe(false);
+  });
+
+  it('returns false for empty string', () => {
+    expect(hasCrashLoopBackOff('')).toBe(false);
+  });
+});
+
+describe('buildLogsArgs', () => {
+  it('does not include --previous when withPrevious is false', () => {
+    const args = buildLogsArgs('my-app-prod', 'my-app-prod', false);
+    expect(args).not.toContain('--previous');
+    expect(args).toContain('--tail=100');
+    expect(args).toContain('app.kubernetes.io/instance=my-app-prod');
+  });
+
+  it('includes --previous when withPrevious is true', () => {
+    const args = buildLogsArgs('my-app-prod', 'my-app-prod', true);
+    expect(args).toContain('--previous');
+  });
+
+  it('uses correct namespace and label selector', () => {
+    const args = buildLogsArgs('my-app-prod', 'my-app-prod', false);
+    expect(args).toContain('-n');
+    expect(args[args.indexOf('-n') + 1]).toBe('my-app-prod');
+    expect(args.some(a => a.includes('app.kubernetes.io/instance=my-app-prod'))).toBe(true);
   });
 });
